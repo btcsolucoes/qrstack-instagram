@@ -142,6 +142,13 @@ dmypy.json
 # VSCode
 .vscode
 ig_settings.json
+.local/
+*.db
+*.db-*
+*.session
+session*.json
+.env.*
+*.key
 .backlog/
 .playwright-mcp/
 docs/superpowers/
