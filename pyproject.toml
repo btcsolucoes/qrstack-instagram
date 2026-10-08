@@ -20,6 +20,7 @@ test = ["pytest>=8,<10"]
 
 [project.scripts]
 qrstack-instagram = "qrstack_instagram.cli:main"
+qrstack-instagram-platform = "qrstack_instagram.platform:main"
 
 [tool.setuptools.packages.find]
 include = ["instagrapi*", "qrstack_instagram*"]

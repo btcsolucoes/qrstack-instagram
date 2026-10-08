@@ -47,10 +47,6 @@ class UploadPhotoMixin:
         if path.suffix.lower() not in valid_extensions:
             raise ValueError('Invalid file format. Only JPG/JPEG/PNG/WEBP files are supported.')
         image_type = 'image/jpeg'
-        if path.suffix.lower() == '.png':
-            image_type = 'image/png'
-        elif path.suffix.lower() == '.webp':
-            image_type = 'image/webp'
         upload_id = upload_id or str(int(time.time() * 1000))
         assert path, 'Not specified path to photo'
         waterfall_id = str(uuid4())
@@ -66,7 +62,7 @@ class UploadPhotoMixin:
             photo_data, photo_size = prepare_image(str(path), max_side=1080)
         photo_len = str(len(photo_data))
         headers = self.private_headers({'Accept-Encoding': 'gzip', 'X-Instagram-Rupload-Params': json.dumps(rupload_params), 'X_FB_PHOTO_WATERFALL_ID': waterfall_id, 'X-Entity-Type': image_type, 'Offset': '0', 'X-Entity-Name': upload_name, 'X-Entity-Length': photo_len, 'Content-Type': 'application/octet-stream', 'Content-Length': photo_len})
-        response = self.private.post('https://{domain}/rupload_igphoto/{name}'.format(domain=config.API_DOMAIN, name=upload_name), data=photo_data, headers=headers)
+        response = self.private.post('https://{domain}/rupload_igphoto/{name}'.format(domain=config.API_DOMAIN, name=upload_name), data=photo_data, headers=headers, timeout=self.read_timeout, allow_redirects=False)
         self.request_log(response)
         if response.status_code != 200:
             self.logger.error('Photo Upload failed with the following response: %s', response)

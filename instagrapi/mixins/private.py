@@ -280,10 +280,10 @@ class PrivateRequestMixin:
                     data = generate_signature(dumps(data))
                     if extra_sig:
                         data += '&'.join(extra_sig)
-                response = self.private.post(api_url, data=data, params=params, headers=request_headers or None, proxies=self.private.proxies)
+                response = self.private.post(api_url, data=data, params=params, headers=request_headers or None, proxies=self.private.proxies, timeout=self.read_timeout, allow_redirects=False)
             else:
                 self.private.headers.pop('Content-Type', None)
-                response = self.private.get(api_url, params=params, headers=request_headers or None, proxies=self.private.proxies)
+                response = self.private.get(api_url, params=params, headers=request_headers or None, proxies=self.private.proxies, timeout=self.read_timeout, allow_redirects=False)
             self.logger.debug('private_request %s: %s (%s)', response.status_code, response.url, response.text)
             mid = response.headers.get('ig-set-x-mid')
             if mid:

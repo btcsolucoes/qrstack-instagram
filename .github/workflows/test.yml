@@ -11,4 +11,5 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m pip install -e '.[test]'
+      - run: qrstack-instagram --help
       - run: python -m pytest -q

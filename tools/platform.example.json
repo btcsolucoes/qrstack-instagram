@@ -1,0 +1,7 @@
+{
+  "worker_url": "https://qrstack-api.qrstack.workers.dev",
+  "publisher_id": "qrstack-windows",
+  "accounts": {
+    "restaurante_interno": "testesqrstack"
+  }
+}

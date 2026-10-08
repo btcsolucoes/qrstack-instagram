@@ -23,7 +23,7 @@ class PasswordMixin:
         return f'#PWD_INSTAGRAM:4:{timestamp}:{payload.decode()}'
 
     def password_publickeys(self):
-        resp = self.public.get('https://i.instagram.com/api/v1/qe/sync/')
+        resp = self.public.get('https://i.instagram.com/api/v1/qe/sync/', timeout=self.read_timeout, allow_redirects=False)
         publickeyid = int(resp.headers.get('ig-set-password-encryption-key-id'))
         publickey = resp.headers.get('ig-set-password-encryption-pub-key')
         return (publickeyid, publickey)

@@ -85,7 +85,14 @@ class Client(PublicRequestMixin, PrivateRequestMixin, PrivateGraphQLRequestMixin
         finally:
             self.password = None
 
-    def photo_upload_to_story(self, path, links=None):
+    def clear_login_session(self):
+        """Explicit fresh login only; retain the saved device identity."""
+        self._clear_session_state(clear_authorization_data=True, clear_authorization_header=True,
+            clear_private_cookies=True, clear_public_cookies=True, clear_last_login=True)
+        self.username = None
+        self.password = None
+
+    def photo_upload_to_story(self, path, links=None, before_request=None):
         links = links or []
         if len(links) != 1 or urlparse(str(links[0].webUri)).scheme != "https":
             raise ValueError("Exactly one HTTPS StoryLink is required")
@@ -94,13 +101,19 @@ class Client(PublicRequestMixin, PrivateRequestMixin, PrivateGraphQLRequestMixin
                 link.width / 2 <= link.x <= 1 - link.width / 2 and
                 link.height / 2 <= link.y <= 1 - link.height / 2):
             raise ValueError("Sticker must fit inside the story")
+        if before_request:
+            before_request()
         self.private_request("media/validate_reel_url/", {
             "url": str(link.webUri), "_uid": str(self.user_id), "_uuid": self.uuid})
+        if before_request:
+            before_request()
         upload_id, width, height = self.photo_rupload(Path(path), for_story=True, resize_mode="fit")
         sticker = dict(type="story_link", is_sticker=True, link_type="web",
             url=str(link.webUri), x=link.x, y=link.y, z=link.z,
             width=link.width, height=link.height, rotation=link.rotation,
             tap_state=0, tap_state_str_id="link_sticker_default")
+        if before_request:
+            before_request()
         result = self.private_request("media/configure_to_story/", self.with_default_data({
             "upload_id": upload_id, "source_type": "4", "configure_mode": "1",
             "device": self.device, "device_id": self.android_device_id,

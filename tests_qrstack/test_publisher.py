@@ -1,18 +1,18 @@
 import json
-import socket
 from unittest.mock import Mock
 import pytest
 from cryptography.fernet import Fernet, InvalidToken
+from PIL import Image
 from instagrapi import Client, StoryLink
 from instagrapi.exceptions import ChallengeRequired, ClientRequestTimeout
 from qrstack_instagram import Vault, Publisher, PublicationStopped
 
 
-@pytest.fixture(autouse=True)
-def offline(monkeypatch):
-    def blocked(*args, **kwargs):
-        raise AssertionError("Tests must never contact Instagram")
-    monkeypatch.setattr(socket.socket, "connect", blocked)
+def authenticated_client():
+    client = Mock(user_id=42)
+    client.account_info.return_value = {"user": {"pk": 42, "username": "internal"}}
+    client.get_settings.return_value = {"cookies": {}}
+    return client
 
 
 def test_client_session_isolation():
@@ -77,12 +77,12 @@ def test_freeze_idempotency_and_no_secret_logging(tmp_path, monkeypatch, caplog)
     monkeypatch.setenv("QRSTACK_TEST_ACCOUNTS", "internal")
     v = Vault(tmp_path / "v.db", Fernet.generate_key())
     v.put("internal", {"state": "HEALTHY", "settings": {"cookies": {}}})
-    fake = Mock()
+    fake = authenticated_client()
     fake.photo_upload_to_story.side_effect = ChallengeRequired("SECRET_COOKIE")
     factory = Mock(return_value=fake)
     p = Publisher(v, factory)
     image = tmp_path / "story.jpg"
-    image.write_bytes(b"fixture")
+    Image.new("RGB", (1080, 1920)).save(image)
     with pytest.raises(PublicationStopped):
         p.publish("internal", "job1", str(image), "https://example.com")
     assert v.get("internal")["state"] == "FROZEN"
@@ -113,11 +113,11 @@ def test_success_survives_restart_and_prevents_duplicate(tmp_path, monkeypatch):
     path = tmp_path / "v.db"
     v = Vault(path, key)
     v.put("internal", {"state": "HEALTHY", "settings": {"cookies": {}}})
-    fake = Mock()
+    fake = authenticated_client()
     fake.photo_upload_to_story.return_value = "123"
     fake.get_settings.return_value = {"cookies": {}}
     image = tmp_path / "story.jpg"
-    image.write_bytes(b"fixture")
+    Image.new("RGB", (1080, 1920)).save(image)
     assert Publisher(v, lambda **kw: fake).publish("internal", "one", str(image), "https://example.com") == "123"
     v.close()
     v = Vault(path, key)

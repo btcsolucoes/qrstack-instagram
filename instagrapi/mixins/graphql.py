@@ -131,7 +131,7 @@ class PrivateGraphQLRequestMixin:
         response = None
         try:
             self.private_requests_count += 1
-            response = self.private.post(url, data=data, headers=merged, proxies=self.private.proxies)
+            response = self.private.post(url, data=data, headers=merged, proxies=self.private.proxies, timeout=self.read_timeout, allow_redirects=False)
             self.request_log(response)
             self.last_response = response
             response.raise_for_status()
