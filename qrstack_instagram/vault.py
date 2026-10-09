@@ -27,6 +27,7 @@ class Vault:
         self.db.execute("CREATE TABLE IF NOT EXISTS accounts (id TEXT PRIMARY KEY, payload BLOB NOT NULL)")
         self.db.execute("CREATE TABLE IF NOT EXISTS jobs (account TEXT, id TEXT, status TEXT, story TEXT, PRIMARY KEY(account,id))")
         self.db.execute("CREATE TABLE IF NOT EXISTS platform_deliveries (id TEXT PRIMARY KEY, payload BLOB NOT NULL)")
+        self.db.execute("CREATE TABLE IF NOT EXISTS session_connections (id TEXT PRIMARY KEY, payload BLOB NOT NULL)")
         # Old jobs have no timestamps. Give every legacy account a full window
         # once on upgrade, rather than assuming it has not recently published.
         self.db.execute("CREATE TABLE IF NOT EXISTS publication_windows (account TEXT PRIMARY KEY, next_publish_at REAL NOT NULL)")
@@ -122,3 +123,27 @@ class Vault:
 
     def close(self):
         self.db.close()
+
+    def session_connections(self, scope):
+        values = []
+        for row in self.db.execute("SELECT id,payload FROM session_connections ORDER BY rowid"):
+            value = json.loads(self.cipher.decrypt(row[1]))
+            if value['id'] != row[0]:
+                raise ValueError('Connection binding mismatch')
+            if value['scope'] == scope:
+                values.append(value)
+        return values
+
+    def save_session_connection(self, value, *, new=False):
+        # Explicit allowlist: a password or Instagram response cannot enter this journal.
+        fields = ('id', 'scope', 'restaurant_slug', 'instagram_username', 'instagram_user_id',
+                  'claim_token', 'state', 'acked', 'verified_at')
+        safe = {key: value[key] for key in fields if key in value}
+        payload = self.cipher.encrypt(json.dumps(safe).encode())
+        with self.db:
+            if new:
+                self.db.execute('INSERT INTO session_connections VALUES (?,?)', (safe['id'], payload))
+            else:
+                result = self.db.execute('UPDATE session_connections SET payload=? WHERE id=?', (payload, safe['id']))
+                if result.rowcount != 1:
+                    raise ValueError('Unknown connection')

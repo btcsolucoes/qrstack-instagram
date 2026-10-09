@@ -19,6 +19,29 @@ diretório. Ele só pode ser aberto pelo usuário Windows que o criou.
 
 ## Operação
 
+### Conexão pela central
+
+Em **Stories → Configurar conta de publicação**, o gestor salva o vínculo com
+o usuário e o ID imutável Instagram e envia a senha por **Conectar sessão**.
+O runner recebe esse pedido autenticado uma única vez. Depois de conferir a
+identidade, aprova o mapa restaurante/conta no vault criptografado; não é preciso
+editar o JSON para cada nova conta aprovada pela gestão. A allowlist local do CLI
+continua válida. Conectar não habilita o vínculo nem altera planos.
+
+A senha não entra no vault, nos logs ou no journal. O Worker remove a entrega
+criptografada ao retirar o pedido; pedidos não retirados expiram em cinco minutos.
+O journal registra a intenção antes do login, de modo que uma queda não cause
+outro login. Uma confirmação perdida repete somente o resultado. Uma operação
+interrompida sem resultado confirmado pausa a conta para revisão.
+
+O status enviado ao painel vem do vault, sem consultas periódicas ao Instagram.
+`verified_at` informa quando a identidade foi confirmada; o heartbeat informa
+se o Windows está online. Uma sessão previamente confirmada ainda pode expirar
+no Instagram. Challenge/2FA requer verificação no aplicativo oficial, seguida
+de uma nova conexão solicitada explicitamente pelo gestor.
+
+### Comandos locais
+
 Executar no PowerShell normal, dentro de `C:\Users\berna\qrstack-instagram`:
 
 ```powershell
@@ -115,7 +138,7 @@ chave e token protegidos separadamente. Não copiar o vault sem sua chave.
 ## Validação
 
 `python -m qrstack_instagram.platform` funciona sem reinstalar o entrypoint.
-Os 98 testes Python são offline e bloqueiam a rede. A ponte foi testada com
+Os testes Python são offline e bloqueiam a rede. A ponte foi testada com
 respostas simuladas; isso não equivale à publicação real pela plataforma.
 O teste real anterior de @testesqrstack, em 2026-10-05, pertence ao publicador
 direto e está registrado em `INTERNAL_VALIDATION.md`.

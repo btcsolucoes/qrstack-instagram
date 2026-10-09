@@ -1,4 +1,4 @@
-"""Pull bridge for the QrStack queue. No credentials, login or publication retries."""
+"""Pull bridge for QrStack. Explicit session requests; no login or posting retries."""
 import argparse
 from contextlib import contextmanager
 import hashlib
@@ -197,11 +197,12 @@ def runner_lock(path):
 
 
 class PlatformRunner:
-    def __init__(self, api, publisher, accounts):
+    def __init__(self, api, publisher, accounts, *, sessions=None):
         self.api = api
         self.publisher = publisher
         self.vault = publisher.vault
         self.accounts = accounts
+        self.sessions = sessions
 
     def local_id(self, job):
         return "platform:" + hashlib.sha256((self.api.scope + "\0" + str(job["id"])).encode()).hexdigest()
@@ -280,6 +281,10 @@ class PlatformRunner:
             pending = self.vault.platform_deliveries(self.api.scope)
             if pending:
                 return self._recover(pending[0])
+            if self.sessions is not None:
+                result = self.sessions.run_once()
+                if result is not None:
+                    return result
             response = self.api.next_job()
             job = response.get("job")
             if job is None:
@@ -380,7 +385,7 @@ def main():
     bind.add_argument("--slug", required=True)
     bind.add_argument("--disabled", action="store_true")
     sub.add_parser("check", help="Check local configuration and sessions, without network access")
-    run = sub.add_parser("run", help="Consume one job by default; never log in automatically")
+    run = sub.add_parser("run", help="Consume one job or explicit owner connection request")
     modes = run.add_mutually_exclusive_group()
     modes.add_argument("--once", action="store_true")
     modes.add_argument("--loop", action="store_true")
@@ -420,7 +425,9 @@ def main():
         else:
             if args.poll_seconds < 15:
                 raise PlatformStopped("Poll interval must be at least 15 seconds")
-            runner = PlatformRunner(api, publisher, accounts)
+            from .sessions import SessionBridge
+            runner = PlatformRunner(api, publisher, accounts,
+                                    sessions=SessionBridge(api, publisher, accounts))
             run_loop(runner, loop=args.loop, poll_seconds=args.poll_seconds)
     except (Exception, KeyboardInterrupt) as error:
         print("STOPPED:", type(error).__name__)

@@ -28,6 +28,12 @@ original no mesmo ambiente virtual.
 
 Operacao da integracao: [PLATFORM_WINDOWS.md](PLATFORM_WINDOWS.md).
 
+A gestao tambem pode solicitar uma conexao explicita pelo painel de Stories.
+A senha tem entrega unica e nao e salva no Windows; o runner confere usuario e
+ID imutavel antes de aprovar o vinculo. O status exibido distingue a ultima
+confirmacao da sessao da disponibilidade do publicador. Nao ha reconexao
+automatica nem novas tentativas de login apos queda ou challenge.
+
 Removidos: follows, likes, comentarios, Direct, scraping, busca de usuarios,
 cadastro de contas, mudanca de senha, feed, albums, videos, Reels, IGTV,
 notificacoes, insights, destaques, desafios automaticos e retries de publicacao.

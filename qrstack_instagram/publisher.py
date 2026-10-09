@@ -1,6 +1,7 @@
 import logging
 import os
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Protocol
 from PIL import Image
@@ -46,12 +47,13 @@ class Publisher:
         self.client_factory = client_factory
         self.request_clock = request_clock or time.monotonic
         self.sleep = sleep or time.sleep
+        self.approved_accounts = set()
 
     def gate(self, account):
         if os.environ.get("QRSTACK_ENABLE_PRIVATE_PUBLISHER") != "1":
             raise PublicationStopped("Private publisher is disabled")
         allowed = [normalize_account(item) for item in os.environ.get("QRSTACK_TEST_ACCOUNTS", "").split(",")]
-        if account not in allowed or not account:
+        if (account not in allowed and account not in self.approved_accounts) or not account:
             raise PublicationStopped("Account is not on the internal test allowlist")
 
     def freeze(self, account, error, revision):
@@ -87,7 +89,7 @@ class Publisher:
         if value["state"] != "HEALTHY" or value.get("revision", 0) != revision:
             raise PublicationStopped("Account stopped or changed during publication")
 
-    def connect(self, account, password, *, fresh_login=False):
+    def connect(self, account, password, *, fresh_login=False, expected_user_id=None):
         account = normalize_account(account)
         self.gate(account)
         previous = self.vault.get(account)
@@ -103,8 +105,11 @@ class Publisher:
                 client.clear_login_session()
             client.login(account, password)
             user_id = self.check_identity(client, account, previous)
+            if expected_user_id is not None and user_id != str(expected_user_id):
+                raise AccountIdentityMismatch("Connected account differs from the requested binding")
             self.gate(account)
-            self.vault.put(account, {"state": "HEALTHY", "settings": client.get_settings(), "user_id": user_id},
+            self.vault.put(account, {"state": "HEALTHY", "settings": client.get_settings(), "user_id": user_id,
+                                    "verified_at": datetime.now(timezone.utc).isoformat()},
                            expected_revision=revision)
         except Exception as error:
             self.freeze(account, error, revision)
